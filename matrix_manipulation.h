@@ -67,7 +67,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "/Users/geddingsbarrineau/Documents/lapack-3.5.0/lapacke/include/lapacke.h" 
+//#include "/Users/geddingsbarrineau/Documents/lapack-3.5.0/lapacke/include/lapacke.h" 
 /* Only for Geddings' OSX*/
 
 

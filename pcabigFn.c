@@ -36,7 +36,7 @@
  *  THIS FUNCTION IS CALLED BY
  *      
  */
-void pcabigFn(data_t **U, data_t **R, data_t **E, int rows, int cols, data_t **B, int rows, int cols) {
+void pcabigFn(data_t **U, data_t **R, data_t **E, int rows, int cols, data_t **B, int num_pixels, int num_images) {
                                                 //  %function [U,R,E] = pcabigFn(B);
                                                 //  %Compute PCA by calculating smaller covariance matrix and reconstructing
                                                 //  %eigenvectors of large cov matrix by linear combinations of original data
@@ -66,27 +66,29 @@ void pcabigFn(data_t **U, data_t **R, data_t **E, int rows, int cols, data_t **B
                                                 //  function [U,R,E] = pcabigFn(B)
                                                 //
 												//  %Read data into columns of B;
-    data_t *length_ones;  
-	data_t *matrix_t;							//  %B = datamat';
+    data_t *length_ones;
+	data_t *B_zeromean;
+	data_t *B_zmtrans;
+	data_t *B_mult;						//  %B = datamat';
+	data_t *B_div;
 	data_t *temp;
 	data_t *temp_vec;
 	data_t *index;
 	data_t *Vsort;
-	data_t *outmatrix;
-	data_t *U;
+	
 	data_t *righteignm;
 	data_t *length_matrix;
-	data_t *R;
 	//data_t *wr_matrix;
 	data_t *wr;
 	data_t *wi;
 	data_t *lefteigenvect;
 	data_t *righteigenvect;
 	data_t *workmatrix;
-	data_t *vector;
+	data_t *B_vector;
 	int integer;
 	
 	/*  Allocation of all arrays    */
+	allocate_matrix(&B_zeromean, num_pixels, num_images);
 	// Rows by 1 array of ones
 	allocate_matrix(&length_ones, rows, 1);
 	// temp vars are used to move matrix from on function to another
@@ -96,8 +98,11 @@ void pcabigFn(data_t **U, data_t **R, data_t **E, int rows, int cols, data_t **B
     allocate_matrix(&index, 1, cols);			//  [N,P] = size(B);    -   sizes found in matlab code                 
 	allocate_matrix(&Vsort, cols, cols);
 	// image data transposed
-	allocate_matrix(&matrix_t, cols, rows);
-	allocate_matrix(&outmatrix, cols, cols);
+	allocate_matrix(&B_zmtrans, num_images, num_pixels);
+	allocate_matrix(&B_mult, num_images, num_images);
+	allocate_matrix(&B_div, num_images, num_images);
+	allocate_vector(&B_vector, num_images*num_images);
+	
 	allocate_matrix(&U, rows, cols);
 	allocate_matrix(&righteignm, cols, cols);
 	allocate_matrix(&length_matrix, rows, cols);
@@ -108,31 +113,31 @@ void pcabigFn(data_t **U, data_t **R, data_t **E, int rows, int cols, data_t **B
 	// there seems to be a problem here
 	allocate_matrix(&wr, cols);
 	allocate_matrix(&wi, cols);
-	allocate_matrix(&lefteigenvect, cols);
-	allocate_matrix(&righteigenvect, cols);
+	allocate_vector(&lefteigenvect, num_images);
+	allocate_vector(&righteigenvect, num_images);
 	allocate_matrix(&workmatrix, cols);
-	allocate_matrix(&vector, cols);
+
 	/*  END OF ARRAY ALLOCATION */
 	
     /*  zero_mean() subtracts out the mean  */  //  %********subtract mean
-    zero_mean(matrix, matrix, rows, cols);      //  mb=mean(B');
+    zero_mean(B_zeromean, B, num_pixels, num_images);      //  mb=mean(B');
                                                 //  B=B-(ones(P,1)*mb)';
                                                 //
 												//  %********Find eigenvectors vi of B'B (PxP)
                                                 //  [V,D] = eig (1/(P-1)*(B'*B));   %scale factor gives eigvals correct
-    transpose(matrix_t, matrix, rows, cols);
-	multiply_matrices(outmatrix, matrix_t, matrix, cols, cols, rows);
-	divide_by_constant(outmatrix, outmatrix, cols, cols, (data_t)cols - 1);
-	matrix_to_vector(vector, outmatrix, rows, cols);
+    transpose(B_zmtrans, B_zeromean, num_pixels, num_images);
+	multiply_matrices(B_mult, B_zmtrans, B_zeromean, num_images, num_images, num_pixels);
+	divide_by_constant(B_div, B_mult, num_images, num_images, (data_t)num_images - 1);
+	matrix_to_vector(B_vector, B_div, num_images, num_images);
 	
-	matrix_eig(righteignm, wr?, vector, rows, cols);
+	matrix_eig(righteignm, wr?, B_vector, num_pixels, num_images);
 	//DGEEV('N', 'V', cols, vector, cols, wr, wi, lefteigenvect, 0, righteigenvect, cols + 1, workmatrix, -1, integer);
     /*  from lapacke    */                      //  %magnitude for large cov mat 
 												//  %(assuming sample cov)
                                                 //  %********Sort eigenvectors
                                                 //  eigvalvec = max(D); -   handled by lapack function
 	                                        	//  [seigvals, index] = sort(eigvalvec); % sort goes low to high
-	eigSort(righteignm, (data_t*)wr, cols, rows); 
+	eigSort(righteignm, (data_t*)wr, num_images, num_pixels);
 	fliplr(index, index, rows, cols);
 	
 	fliplr(Vsort, righteignm, rows, cols);

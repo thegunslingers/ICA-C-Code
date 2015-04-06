@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include "matrix_manipulation.h"
+
+#define EIGV_NUM 116  // Can be changed for optimization
 /*==================================================================================================
  *  ICA.c
  *
@@ -21,7 +23,7 @@
  */
  
 /*  essential libraries are included here */
-void runica(data_t *matrix, data_t, int rows, int cols, data_t *uu; data_t *w, data_t *wz);
+void runica(data_t *matrix, data_t, int rows, int cols, data_t *uu, data_t *w, data_t *wz);
 
 int main(int argc, char *argv[]) {
 
@@ -78,55 +80,92 @@ int main(int argc, char *argv[]) {
 	data_t *test_ex;
 	data_t *temp;
 	data_t *temp2;
-	int rows;
-	int cols;
 	
-	allocate_matrix(uu, ?rows, ?cols);
-	allocate_matrix(w, rows, rows);
-	allocate_matrix(wz, cols, rows);
-	allocate_matrix(v, ?, ?);
-	allocate_matrix(R, ?, ?);
-	allocate_matrix(E, ?, ?);
-	allocate_matrix(C, ?, ?);
-	allocate_matrix(length_matrix, ?, ?);
-	allocate_matrix(x, ?, ?);
-	allocate_matrix(oldx, ?, ?);
-	allocate_matrix(Ctest, ?, ?);
-	allocate_matrix(Dtest, ?, ?);
-	allocate_matrix(Rtest, ?, ?);
-	allocate_matrix(Ftest, ?, ?);
-	allocate_matrix(trainClass, ?, ?);
-	allocate_matrix(testClass, ?, ?);
-	allocate_matrix(F, ?, ?);
-	allocate_matrix(train_ex, ?, ?);
-	allocate_matrix(test_ex, ?, ?);
-	allocate_matrix(temp, ?, ?);
-	allocate_matrix(temp2, ?, ?);
-													//  loadFaceMat -   Will be done in Matlab
-    pcabigFn(V, R, E, transpose(C), length_matrix); //  [V,R,E] = pcabigFn(C');
-                                                    //  %D = zeroMn(C')'; % D is 500x3600 and D = C-ones(500,1)*mean(C);
-                                                    //  %R = D*V; 	 % R is 500x499 and contains the PCA coefficients;
-                                                    //
-                                                    //  % We choose to use the first 200 eigenvectors.
-                                                    //  % (If PCA generalizes better by dropping first few eigenvectors, ICA will too).
+	data_t *temp_v;
+	data_t *temp_R;
+	data_t *trans_C;
+	data_t *temp_Ctest;
+	data_t *temp_Dtest;
+	
+	int num_images;
+	int num_testimages;
+	int num_pixels;
+	int cols;
+
+	////// Load in aligned PGM Face Images
+	allocate_matrix(C, num_images, num_pixels);
+	
+	//Read_PGM_Folder
+	
+	allocate_matrix(V, num_pixels, num_images);
+	allocate_matrix(R, num_images, num_images);
+	allocate_matrix(E, 1, num_images);
+	allocate_matrix(length_matrix, ?, ?);		// Still unsure of this size.
+	
+	allocate_matrix(x, EIGV_NUM, num_pixels);
+	
+	allocate_matrix(uu, EIGV_NUM, num_pixels);
+	allocate_matrix(w, EIGV_NUM, EIGV_NUM);
+	allocate_matrix(wz, EIGV_NUM, EIGV_NUM);
+	
+	allocate_matrix(F, num_images, EIGV_NUM);
+	
+	allocate_matrix(oldx, ?, ?);		// oldw in matlab?? 116x116 if so
+	allocate_matrix(Ctest, num_testimages, num_pixels);		//
+	allocate_matrix(Dtest, num_testimages, num_pixels);
+	allocate_matrix(Rtest, num_testimages, num_images);
+	allocate_matrix(Ftest, num_testimages, EIGV_NUM);
+	
+	allocate_matrix(trainClass, 1, 500);		// This is pre-transpose. Consider creating another array.
+	allocate_matrix(testClass, 1, 20);			// Also pre-transpose.
+
+	allocate_matrix(train_ex, EIGV_NUM, num_images);
+	allocate_matrix(test_ex, EIGV_NUM, num_testimages);
+	
+	allocate_matrix(temp, EIGV_NUM, EIGV_NUM);
+	allocate_matrix(temp2, EIGV_NUM, EIGV_NUM);
+	allocate_matrix(trans_C, num_images, num_pixels);
+	allocate_matrix(temp_v, num_pixels, EIGV_NUM);
+	allocate_matrix(temp_R, num_images, EIGV_NUM);
+	allocate_matrix(temp_Ctest, num_pixels, num_testimages);
+	allocate_matrix(temp_Dtest, num_pixels, num_testimages);
+	
+	
+	///// Begin ICA Operations
+	
+	transpose(trans_C, C, num_images, num_pixels);
+	// length_matrix, B?
+    pcabigFn(V, R, E, trans_C, num_pixels, num_images); 							//  [V,R,E] = pcabigFn(C');
+																		//  %D = zeroMn(C')'; % D is 500x3600 and D = C-ones(500,1)*mean(C);
+																		//  %R = D*V; 	 % R is 500x499 and contains the PCA coefficients;
+																		//
+																		//  % We choose to use the first 200 eigenvectors.
+																		//  % (If PCA generalizes better by dropping first few eigenvectors, ICA will too).
     //FYI ALLL TRANSPOSES in this file MUST CHANGE LOOK AT MATRIX MANIPULATION
-    x = transpose(V(:, 1:116));                     //  x = V(:,1:116)'; 		% x is 200x3600
-    runica(x, oldx, rows, cols, uu, w, wz);  //  runica 				    % calculates wz, w and uu. The matrix x gets
-                                                    //                          % overwritten by a sphered version of x.
-    multiply_matrices(temp, w, wz, int rows, int cols, int k);
-	inv(temp2, temp, int rows);
-	//F = R(:,1:116) * inv(w*wz);                     //  F = R(:,1:116) * inv(w*wz); 	% F is 500x200 and each row contains the 
-    R(:,1:116);
-	multiply_matrices(F, R, temp2, int rows, int cols, int k);                                                //                                  % ICA1 rep of an image
-                                                    //
-                                                    //  % Representations of test images under architecture I:
-                                                    //  % Put original aligned test images in rows of Ctest.
-                                                    //  loadTestMat -   Will be done in Matlab
-    Dtest = transpose(zeroMn(transpose(Ctest)));    //  Dtest = zeroMn(Ctest')'; % For proper testing, subtract the mean of the
-	    		                                    //                           % training images not the test images:
-		    	                                    //                           % Dtest = Ctest-ones(500,1)*mean(C);
-    Rtest = Dtest * V;                              //  Rtest = Dtest*V;
-    //Ftest = Rtest(:,1:116) * inv(w * wz);           //  Ftest = Rtest(:,1:116) * inv(w*wz);
+	
+	submatrix(temp_v, V, num_pixels, num_images, 0, 0, num_pixels - 1, EIGV_NUM - 1);
+    transpose(x, temp_v, num_pixels, EIGV_NUM);                                          //  x = V(:,1:116)'; 		% x is 200x3600
+    runica(x, oldx, rows, cols, uu, w, wz);  //  runica 				  % calculates wz, w and uu. The matrix x gets
+                                                    //                   % overwritten by a sphered version of x.
+    multiply_matrices(temp, w, wz, EIGV_NUM, EIGV_NUM, EIGV_NUM);
+	inv(temp2, temp, EIGV_NUM);
+	//F = R(:,1:116) * inv(w*wz);                    					 //  F = R(:,1:116) * inv(w*wz); 	% F is 500x200 and each row contains the 
+    //R(:,1:116);
+	submatrix(temp_R, R, num_images, num_images, 0, 0, num_images - 1, EIGV_NUM - 1);
+	multiply_matrices(F, temp_R, temp2, num_images, EIGV_NUM, EIGV_NUM);                                                //                                  % ICA1 rep of an image
+																		//
+																		//  % Representations of test images under architecture I:
+																		//  % Put original aligned test images in rows of Ctest.
+																		//  loadTestMat -   Will be done in Matlab
+    //Dtest = transpose(zeroMn(transpose(Ctest)));    					//  Dtest = zeroMn(Ctest')'; % For proper testing, subtract the mean of the
+	transpose(temp_Ctest, Ctest, num_testimages, num_pixels);
+	zero_mean(temp_Dtest, temp_Ctest, num_pixels, num_testimages);
+	transpose(Dtest, temp_Dtest, num_testimages, num_pixels);
+	
+																		//                           % training images not the test images:
+																		//                           % Dtest = Ctest-ones(500,1)*mean(C);
+    Rtest = Dtest * V;                              					//  Rtest = Dtest*V;
+    //Ftest = Rtest(:,1:116) * inv(w * wz);         					  //  Ftest = Rtest(:,1:116) * inv(w*wz);
     Rtest(:,1:116);
 	multiply_matrices(Ftest, Rtest, temp2, int rows, int cols, int k);                                                  //
                                                     //  % Test nearest neighbor classification using cosine, not euclidean distance, 
@@ -146,8 +185,8 @@ int main(int argc, char *argv[]) {
     /*  Profiling begins here   */                  //  profile clear
                                                     //  profile -detail builtin on
                                                     //  %We now compute percent correct:
-    train_ex = transpose(F);                        //  train_ex = F';
-    test_ex = transpose(Ftest);                     //  test_ex = Ftest';
+	transpose(train_ex, F, ?, ?);					//  train_ex = F';
+	transpose(test_ex, Ftest, ?, ?);				//  test_ex = Ftest';
     nnclassFn(pc, rankmat, train_ex,test_ex,trainClass,testClass);  //  [pc,rankmat] = nnclassFn(train_ex,test_ex,trainClass,testClass)
     /*  End profiling   */                          //  profile off
                                                     //  profile viewer
@@ -185,14 +224,15 @@ int main(int argc, char *argv[]) {
     |       % The ICA representation will be in F (called U in Bartlett, Movellan & 
     |       % Sejnowski, 2002): 
     ======================================================================================*/
-    pcabigFn(V, R, E, transpose(C));    //  [V,R,E] = pcabigFn(C');
+	transpose(trans_C, C, ?, ?);
+    pcabigFn(V, R, E, trans_C);    //  [V,R,E] = pcabigFn(C');
                                         //  %D = zeroMn(C')'; % D is 500x3600 and D = C-ones(500,1)*mean(C);
                                         //  %R = D*V; 	 % R is 500x499 and contains the PCA coefficients;
                                         //
     x = transpose(R(:,1:116));          //  x = R(:,1:116)'; 	% x is 200x500;
    runica(x, oldx, rows, cols, uu, w, wz);   //  runica 			    % calculates w, wz, and uu. The matrix x gets overwritten
 			                            //                      % by a sphered version of x. 
-    F = transpose(uu);                  //  F = uu'; 		% F is 500x200 and each row contains the ICA2 rep of 1 image. 
+    transpose(F, uu, ?, ?);             //  F = uu'; 		% F is 500x200 and each row contains the ICA2 rep of 1 image. 
 			                            //                  % F = w * wz * zeroMn(R(:,1:200)')'; is the same thing.
                                         //
                                         //  % Representations of test images under architecture II
