@@ -770,7 +770,7 @@ void matrix_sqrtm(data_t *outmatrix, data_t *matrix, int rows, int cols){
 }
 
 /*==================================================================================================
- *  matrix_eig
+ *  matrix_eig  <<<< Trade out for GSL Library Eig Fxn
  *
  *  Parameters
  *      double pointer, type data_t = matrix
